@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sacred Geometry Fractal Animation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Include Three.js from a CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // ===== SETUP SCENE, CAMERA, RENDERER =====
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 50;
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    
+    // ===== ADD LIGHTING =====
+    const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(50, 50, 50);
+    scene.add(directionalLight);
+    
+    // ===== RECURSIVE FUNCTION: CREATE FRACTAL TORUS-KNOT STRUCTURE =====
+    /**
+     * createFractalTorus(level, maxLevel, size)
+     * @param {number} level - current recursion level
+     * @param {number} maxLevel - maximum recursion depth
+     * @param {number} size - size of the torus knot at this level
+     * @returns {THREE.Group} a group containing the torus knot and its children
+     */
+    function createFractalTorus(level, maxLevel, size) {
+      const group = new THREE.Group();
+      
+      // Create a torus knot geometry and material for this level.
+      const geometry = new THREE.TorusKnotGeometry(size, size * 0.3, 100, 16);
+      // Use a hue based on level to differentiate branches
+      const hue = (level / (maxLevel + 1)) * 360;
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(`hsl(${hue}, 80%, 50%)`),
+        roughness: 0.4,
+        metalness: 0.7
+      });
+      const torusKnot = new THREE.Mesh(geometry, material);
+      group.add(torusKnot);
+      
+      // Save a random rotation speed for this branch.
+      group.userData.rotationSpeed = (Math.random() * 0.02) + 0.005;
+      
+      // If we haven't reached the maximum depth, add child torus knots.
+      if (level < maxLevel) {
+        const numChildren = 6; // Number of children arranged in a circle.
+        for (let i = 0; i < numChildren; i++) {
+          const angle = i * (Math.PI * 2 / numChildren);
+          // Recursively create a smaller torus knot.
+          const child = createFractalTorus(level + 1, maxLevel, size * 0.5);
+          // Position the child in a circle around the parent.
+          const distance = size * 2.5;
+          child.position.set(Math.cos(angle) * distance, Math.sin(angle) * distance, 0);
+          // Rotate the child so its "orbit" aligns with its placement.
+          child.rotation.z = angle;
+          group.add(child);
+        }
+      }
+      return group;
+    }
+    
+    // Create the fractal structure (adjust maxLevel for complexity)
+    const maxRecursionLevel = 2;
+    const fractalGroup = createFractalTorus(0, maxRecursionLevel, 8);
+    scene.add(fractalGroup);
+    
+    // ===== ANIMATION LOOP =====
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // Slow overall rotation of the entire fractal structure.
+      fractalGroup.rotation.y += 0.005;
+      fractalGroup.rotation.x += 0.003;
+      
+      // Traverse all objects in the fractal and apply individual rotations.
+      fractalGroup.traverse(child => {
+        if (child.userData && child.userData.rotationSpeed) {
+          child.rotation.y += child.userData.rotationSpeed;
+        }
+      });
+      
+      renderer.render(scene, camera);
+    }
+    animate();
+    
+    // ===== HANDLE WINDOW RESIZE =====
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
